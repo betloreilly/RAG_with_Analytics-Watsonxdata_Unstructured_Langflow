@@ -117,6 +117,32 @@ langflow run
 
 Open http://localhost:7860 in your browser.
 
+### Step 6: Import the Pre-built Flow (Optional)
+
+A ready-to-use RAG flow is included in this repo. To import it:
+
+1. In Langflow, click **My Projects** → **New Project** → **Import**
+2. Select `RAG with Opensearch.json` from this repo
+3. Update the OpenSearch connection settings in the flow
+4. Add your API keys (OpenAI/watsonx)
+
+This flow includes Chat Input, OpenSearch retrieval, RAG prompt, and LLM response components pre-configured.
+
+---
+
+## Ingesting Documents
+
+You have two options to ingest documents into OpenSearch:
+
+| Option | Tool | Best For |
+|--------|------|----------|
+| **Langflow UI** | Visual flow builder | Quick testing, simple RAG |
+| **Python Script** | `ingest_unstructured_opensearch.py` | Hybrid search with field boosting |
+
+**Langflow UI**: Build an ingestion flow visually (File Loader → Unstructured → Embeddings → OpenSearch). Simple but only creates `text` and `vector_field`.
+
+**Python Script**: Creates an optimized schema with `keywords`, `title`, `summary` fields and custom analyzers for better BM25 ranking. Recommended for production hybrid search.
+
 ---
 
 ## Ingesting Documents with the Python Script
@@ -290,12 +316,13 @@ The double braces `{{` and `}}` are required because Langflow uses single braces
 
 ```
 Unstructured_OpenSearch/
-├── docker-compose.yml          # OpenSearch containers
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── env-example.txt             # Environment variable template
+├── docker-compose.yml              # OpenSearch containers
+├── requirements.txt                # Python dependencies
+├── README.md                       # This file
+├── env-example.txt                 # Environment variable template
+├── RAG with Opensearch.json        # Pre-built Langflow flow (import this)
 ├── .gitignore
-├── data/                       # Place your documents here
+├── data/                           # Place your documents here
 └── scripts/
     └── ingest_unstructured_opensearch.py  # Document ingestion script
 ```
