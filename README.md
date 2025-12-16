@@ -327,6 +327,48 @@ View detailed analytics at http://localhost:5601 (OpenSearch Dashboards).
 
 See `frontend/README.md` for full documentation.
 
+### How LLM Quality Scoring Works
+
+Every time a user asks a question, the system uses a secondary LLM call (GPT-4o-mini) to evaluate the quality of the RAG answer. This is a technique called **LLM-as-a-Judge**, where we use one LLM to evaluate the output of another. The evaluation prompt is designed using several prompting best practices:
+
+1. **Role Assignment**: The prompt tells the LLM it's analyzing a "RAG answer", giving it context about what kind of output it's evaluating
+2. **Structured Input**: The question and answer are clearly labeled and separated, so the LLM knows exactly what to evaluate
+3. **JSON Output Format**: We provide an exact JSON schema the LLM must follow, ensuring consistent, parseable responses
+4. **Explicit Scoring Rubric**: The prompt includes clear criteria for each score range (Good/Fair/Poor), removing ambiguity
+5. **Few-shot Examples via Criteria**: Rather than showing example outputs, the criteria descriptions act as implicit examples of what each score means
+
+Here's a simplified view of what the evaluation prompt looks like:
+
+```
+Analyze the quality of this RAG answer.
+
+QUESTION: {user's original question}
+ANSWER: {the RAG system's response}
+
+Respond with JSON containing:
+- quality_score (0.0-1.0)
+- quality_label (good/fair/poor)
+- needs_improvement (true/false)
+- improvement_reason (why, if needed)
+- has_citations (does it reference sources?)
+- confidence_expressed (appropriate uncertainty?)
+
+Criteria:
+- GOOD (0.7-1.0): Directly answers, accurate, cites sources
+- FAIR (0.4-0.69): Partial answer, vague or missing details
+- POOR (0-0.39): Wrong, off-topic, or unhelpful "I don't know"
+```
+
+This happens automatically in the background and doesn't affect the user's experience.
+
+#### Quality Scoring
+
+The LLM scores each answer from 0 to 1: **Good** (0.7+) means accurate and complete, **Fair** (0.4-0.69) means partial or vague, **Poor** (below 0.4) means incorrect or unhelpful. It also flags whether the answer cites sources and expresses appropriate confidence.
+
+#### Question Categorization
+
+Each question is classified by **category** (Technical, Business, Research, etc.), **type** (Factual, Procedural, Analytical, Comparative, etc.), and **complexity** (Simple, Moderate, Complex). This helps you see what users ask most and where your RAG needs improvement.
+
 ---
 
 ## Access Points
