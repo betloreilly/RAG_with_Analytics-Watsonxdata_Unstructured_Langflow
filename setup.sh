@@ -181,6 +181,16 @@ main() {
         log_info "You can create indices manually later - see README.md"
     fi
     
+    # Step 6b: Ingest documents from ./data (prepares RAG for users)
+    print_header "Step 6b: Ingesting Documents"
+    
+    if [ ! -z "$OPENSEARCH_URL" ] && [ ! -z "$OPENSEARCH_USERNAME" ] && [ ! -z "$OPENSEARCH_PASSWORD" ]; then
+        run_ingestion
+    else
+        log_warning "OpenSearch credentials not configured, skipping ingestion"
+        log_info "After configuring .env, run: source venv/bin/activate && python scripts/ingest_unstructured_opensearch.py --dir ./data"
+    fi
+    
     # Step 7: Start Langflow and Import Flow
     print_header "Step 7: Starting Langflow"
     
@@ -218,21 +228,25 @@ main() {
     # Step 9: Summary and Next Steps
     print_header "Setup Complete!"
     
+    # Ensure LANGFLOW_URL is set from .env for summary (default 7860)
+    if [ -f ".env" ]; then set -a; source .env; set +a; fi
+    LANGFLOW_URL="${LANGFLOW_URL:-http://localhost:7860}"
+    
     log_success "Your RAG pipeline is configured and ready to use!"
     echo ""
     
-    log_success "Langflow is running at http://localhost:7861 (no authentication required)"
+    log_success "Langflow is running at $LANGFLOW_URL (no authentication required)"
     echo ""
     
     echo "Next Steps:"
     echo ""
     echo "1. Import Langflow Flow:"
-    echo "   - Open http://localhost:7861"
+    echo "   - Open $LANGFLOW_URL"
     echo "   - Import 'RAG with Opensearch.json'"
     echo "   - Update OpenSearch credentials in the flow"
     echo "   - Copy the Flow ID and update LANGFLOW_FLOW_ID in .env"
     echo ""
-    echo "2. Ingest documents:"
+    echo "2. Ingest documents (if not already done during setup):"
     echo "   source venv/bin/activate"
     echo "   python scripts/ingest_unstructured_opensearch.py --dir ./data"
     echo ""
@@ -243,7 +257,7 @@ main() {
     echo ""
     echo "4. Access Services:"
     echo "   - Chat UI: http://localhost:3000"
-    echo "   - Langflow: http://localhost:7861"
+    echo "   - Langflow: $LANGFLOW_URL"
     echo "   - OpenSearch Dashboards: ${OPENSEARCH_DASHBOARDS_URL}"
     echo ""
     echo "5. View Analytics:"
@@ -308,9 +322,9 @@ configure_env() {
         export UNSTRUCTURED_API_KEY
     fi
     
-    # Add Langflow URL and Flow ID placeholders if not present
+    # Add Langflow URL and Flow ID placeholders if not present (default port 7860)
     if ! grep -q "LANGFLOW_URL" .env; then
-        echo "LANGFLOW_URL=http://localhost:7861" >> .env
+        echo "LANGFLOW_URL=http://localhost:7860" >> .env
     fi
     if ! grep -q "LANGFLOW_FLOW_ID" .env; then
         echo "LANGFLOW_FLOW_ID=" >> .env
@@ -414,9 +428,51 @@ create_opensearch_indices() {
     log_success "OpenSearch indices ready!"
 }
 
+# Ingest documents from ./data into hybrid_demo index
+run_ingestion() {
+    if [ ! -d "venv" ]; then
+        log_warning "Virtual environment not found, skipping ingestion"
+        log_info "Run after setup: source venv/bin/activate && python scripts/ingest_unstructured_opensearch.py --dir ./data"
+        return 0
+    fi
+    if [ ! -d "./data" ]; then
+        log_warning "No ./data directory found, skipping ingestion"
+        return 0
+    fi
+    # Load .env for API keys
+    if [ -f ".env" ]; then
+        set -a
+        source .env
+        set +a
+    fi
+    if [ -z "$OPENAI_API_KEY" ] || [ -z "$UNSTRUCTURED_API_KEY" ]; then
+        log_warning "OPENAI_API_KEY or UNSTRUCTURED_API_KEY not set in .env, skipping ingestion"
+        log_info "After adding keys to .env, run: source venv/bin/activate && python scripts/ingest_unstructured_opensearch.py --dir ./data"
+        return 0
+    fi
+    log_info "Ingesting documents from ./data into OpenSearch (this may take a minute)..."
+    source venv/bin/activate
+    if python scripts/ingest_unstructured_opensearch.py --dir ./data; then
+        log_success "Document ingestion complete. RAG is ready to use."
+    else
+        log_warning "Ingestion failed or had errors (see above). You can run it later: python scripts/ingest_unstructured_opensearch.py --dir ./data"
+    fi
+}
+
 # Start Langflow and import flow
 start_langflow() {
     log_info "Starting Langflow without authentication..."
+    
+    # Get Langflow URL and port from .env (default http://localhost:7860)
+    if [ -f ".env" ]; then
+        set -a
+        source .env
+        set +a
+    fi
+    LANGFLOW_URL="${LANGFLOW_URL:-http://localhost:7860}"
+    LANGFLOW_PORT=$(echo "$LANGFLOW_URL" | sed -n 's|.*:\([0-9]*\)/*$|\1|p')
+    [ -z "$LANGFLOW_PORT" ] && LANGFLOW_PORT=7860
+    export LANGFLOW_URL
     
     # Check if Langflow is already running
     if [ -f "langflow.pid" ]; then
@@ -424,8 +480,7 @@ start_langflow() {
         if ps -p $OLD_PID > /dev/null 2>&1; then
             log_warning "Langflow is already running (PID: $OLD_PID)"
             if ! confirm "Stop and restart Langflow?"; then
-                log_info "Using existing Langflow instance"
-                LANGFLOW_URL="http://localhost:7861"
+                log_info "Using existing Langflow instance at $LANGFLOW_URL"
                 import_langflow_flow
                 return
             else
@@ -437,11 +492,11 @@ start_langflow() {
     fi
     
     # Start Langflow in background without authentication
-    log_info "Launching Langflow (this may take 30-60 seconds)..."
+    log_info "Launching Langflow on port $LANGFLOW_PORT (this may take 30-60 seconds)..."
     
     source venv/bin/activate
     export LANGFLOW_SKIP_AUTH_AUTO_LOGIN=true
-    nohup langflow run --host 0.0.0.0 --port 7861 > langflow.log 2>&1 &
+    nohup langflow run --host 0.0.0.0 --port "$LANGFLOW_PORT" > langflow.log 2>&1 &
     LANGFLOW_PID=$!
     echo $LANGFLOW_PID > langflow.pid
     
@@ -449,7 +504,6 @@ start_langflow() {
     log_info "Waiting for Langflow to be ready..."
     
     # Wait for Langflow to be ready (max 120 seconds)
-    LANGFLOW_URL="http://localhost:7861"
     MAX_WAIT=120
     ELAPSED=0
     
@@ -476,7 +530,7 @@ start_langflow() {
     log_warning "IMPORTANT: Configure Langflow manually:"
     log_info ""
     log_info "1. IMPORT THE FLOW:"
-    log_info "   - Open http://localhost:7861 (no login required)"
+    log_info "   - Open $LANGFLOW_URL (no login required)"
     log_info "   - Look for 'Upload' button/icon on the LEFT sidebar"
     log_info "   - Click Upload and select 'RAG with Opensearch.json' from this directory"
     log_info "   - Or drag and drop the JSON file into the main canvas"
@@ -498,8 +552,8 @@ start_langflow() {
     log_info "   - Save the component"
     log_info ""
     log_info "4. GET FLOW ID:"
-    log_info "   - Look at the browser URL bar"
-    log_info "   - Flow ID is the last part: .../flow/YOUR-FLOW-ID"
+    log_info "   - Look at the browser URL bar: ${LANGFLOW_URL}/flow/YOUR-FLOW-ID"
+    log_info "   - Copy the Flow ID and set LANGFLOW_FLOW_ID in .env"
     log_info "   - Copy the Flow ID"
     log_info "   - Update LANGFLOW_FLOW_ID in .env file"
     log_info ""

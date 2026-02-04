@@ -225,8 +225,8 @@ npm run setup-opensearch
 - Start services: `docker-compose up -d`
 
 ### "Langflow API error"
-- Verify Langflow is running on port 7860
-- Check `LANGFLOW_FLOW_ID` in `.env.local`
+- Verify Langflow is running at the URL in `LANGFLOW_URL` (in project root `.env`; default port 7860)
+- Check `LANGFLOW_FLOW_ID` in `.env`
 
 ### "LLM analysis failed"
 - Verify `OPENAI_API_KEY` is set correctly

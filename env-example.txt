@@ -25,7 +25,7 @@ INDEX_NAME=hybrid_demo
 # OpenSearch Dashboards URL (NEXT_PUBLIC_ prefix makes it available to browser)
 NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL=https://your-dashboards-instance.com:5601
 
-# Langflow Configuration (automatically set by setup.sh)
-LANGFLOW_URL=http://localhost:7861
+# Langflow Configuration (default port 7860; change if you run Langflow on another port)
+LANGFLOW_URL=http://localhost:7860
 LANGFLOW_FLOW_ID=
 LANGFLOW_API_KEY=

@@ -106,6 +106,7 @@ OpenSearch Dashboards provides a unified view of all RAG interactions, making it
 | **OpenSearch (watsonx.data)** | Stores documents and analytics | You need: **URL** (e.g. `https://...:9200`), **username**, and **password**. Get these from your watsonx.data OpenSearch service in the IBM Cloud console. |
 | **OpenAI API key** | Embeddings and answer quality checks | Create an API key at [platform.openai.com](https://platform.openai.com/api-keys). |
 | **Unstructured.io API key** | Document parsing (PDF, Word, etc.) | Sign up at [unstructured.io](https://unstructured.io/) and create an API key. |
+| **Python dependencies** | Ingestion script and .env loading | From the project root: `pip install -r requirements.txt`. If you get `ModuleNotFoundError: No module named 'dotenv'`, run `pip install python-dotenv`. |
 
 Have these ready before running the setup script so you can paste them when prompted.
 
@@ -114,6 +115,10 @@ Have these ready before running the setup script so you can paste them when prom
 ## Quick Start
 
 This section gets you from zero to a running RAG app in two parts: **run the setup script**, then **do three follow-up steps** (import the flow in Langflow, ingest documents, start the web app).
+
+<div style="background-color: #f6f8fa; color: #24292f; padding: 1em 1.2em; border-radius: 6px; margin: 1em 0; border-left: 4px solid #0969da;">
+
+**Start here — quick path**
 
 ### Option 1: Quick setup with setup.sh (recommended)
 
@@ -219,13 +224,13 @@ The script will create a `.env` file with these values and will derive the OpenS
 When `setup.sh` completes, it will print reminders. Do the following in order:
 
 1. **Import the RAG flow in Langflow**
-   - Open **http://localhost:7861** in your browser (no login).
+   - Open your Langflow URL in your browser (no login). The URL is in `.env` as `LANGFLOW_URL` (default: **http://localhost:7860**).
    - In Langflow, use the **Upload** option on the **left sidebar** and select the file **`RAG with Opensearch.json`** from this project folder (or drag the file onto the canvas).
    - In Langflow **Settings** (gear icon), add a **Global Variable**: name `OPENAI_API_KEY`, value = your OpenAI API key.
    - In the flow, click the **OpenSearch** component and set its **URL**, **username**, **password**, and **index name** (`hybrid_demo`) to match your `.env`.
 
 2. **Put the Flow ID into `.env`**
-   - In the browser, check the Langflow URL; it will look like `http://localhost:7861/flow/abc123-def456-...`. The last part is the **Flow ID**.
+   - In the browser, check the address bar; it will look like `http://localhost:7860/flow/abc123-def456-...` (or the port from your `LANGFLOW_URL`). The last part is the **Flow ID**.
    - Open the project’s **`.env`** file in a text editor and set:
      ```bash
      LANGFLOW_FLOW_ID=abc123-def456-...
@@ -246,9 +251,7 @@ When `setup.sh` completes, it will print reminders. Do the following in order:
      ```
    - Open **http://localhost:3000** in your browser. You should see the chat and analytics.
 
-**You’re done.** Use the chat to ask questions; the Analytics page and OpenSearch Dashboards will show quality and usage over time.
-
----
+**You’re done.** Use the chat to ask questions; the Analytics page will show quality and usage over time. OpenSearch Dashboards will be available after you prepare them (configure the Dashboards URL, run `npm run setup-opensearch` in `frontend/`, and create index patterns and visualizations)—see [OpenSearch Dashboards Guide](docs/OpenSearch-Dashboards-Guide.md) for details.
 
 **What the script does (for reference):**
 
@@ -265,7 +268,9 @@ For step-by-step setup **without** the script (e.g. if the script fails or you p
 
 - The script may ask for confirmation before overwriting existing files (e.g. `.env` or `venv`). Type `y` and Enter to continue.
 - **Analytics page shows “index not found” for rag_analytics:** From the project folder run `./scripts/create-analytics-index.sh`, then restart the frontend (`cd frontend` and `npm run dev` again).
-- **Stop or restart Langflow:** Run `./stop-langflow.sh` to stop. To start again: `source venv/bin/activate`, then `export LANGFLOW_SKIP_AUTH_AUTO_LOGIN=true`, then `nohup langflow run --host 0.0.0.0 --port 7861 > langflow.log 2>&1 &`, then `echo $! > langflow.pid`. View logs with `tail -f langflow.log`.
+- **Stop or restart Langflow:** Run `./stop-langflow.sh` to stop. To start again: `source venv/bin/activate`, then `export LANGFLOW_SKIP_AUTH_AUTO_LOGIN=true`, then run `langflow run --host 0.0.0.0 --port PORT` (use the port from `LANGFLOW_URL` in `.env`, e.g. 7860), e.g. `nohup langflow run --host 0.0.0.0 --port 7860 > langflow.log 2>&1 &`, then `echo $! > langflow.pid`. View logs with `tail -f langflow.log`.
+
+</div>
 
 ---
 
@@ -344,10 +349,10 @@ The dimension of 1536 matches OpenAI's `text-embedding-3-small` model.
 #### Step 4: Start Langflow
 
 ```bash
-LANGFLOW_SKIP_AUTH_AUTO_LOGIN=true langflow run --host 0.0.0.0 --port 7861
+LANGFLOW_SKIP_AUTH_AUTO_LOGIN=true langflow run --host 0.0.0.0 --port 7860
 ```
 
-Open http://localhost:7861 in your browser (no login required).
+Open the URL from `LANGFLOW_URL` in `.env` in your browser (default http://localhost:7860, no login required).
 
 #### Step 5: Import and Configure the RAG Flow
 
@@ -355,7 +360,7 @@ A ready-to-use RAG flow is included in this repo.
 
 **Import the Flow:**
 
-1. Open Langflow at http://localhost:7861 (no login required)
+1. Open Langflow at the URL in `.env` (`LANGFLOW_URL`, default http://localhost:7860) (no login required)
 2. Look for the **Upload** button/icon on the **LEFT sidebar**
 3. Click Upload and select `RAG with Opensearch.json` from this directory
    - Or drag and drop the JSON file directly onto the canvas
@@ -386,7 +391,7 @@ This makes your OpenAI key available to all components in the flow without hardc
 
 **Get Your Flow ID:**
 
-1. Look at the browser URL bar: `http://localhost:7861/flow/YOUR-FLOW-ID-HERE`
+1. Look at the browser URL bar: `<LANGFLOW_URL>/flow/YOUR-FLOW-ID-HERE` (e.g. http://localhost:7860/flow/...)
 2. Copy the Flow ID (the UUID at the end of the URL)
 3. Update your `.env` file:
    ```bash
@@ -430,31 +435,14 @@ The `scripts/ingest_unstructured_opensearch.py` script provides a complete inges
 # Activate your virtual environment
 source venv/bin/activate
 
-# Install dependencies (includes python-dotenv for .env file loading)
+# Install dependencies (see Prerequisites if you need python-dotenv)
 pip install -r requirements.txt
 
 # The script automatically loads credentials from .env file
 # No need to export environment variables manually!
 
-# Ingest a single file
-python scripts/ingest_unstructured_opensearch.py --file /path/to/document.pdf
-
-# Ingest a directory
-python scripts/ingest_unstructured_opensearch.py --dir /path/to/documents/
-
-# Specify index name
-python scripts/ingest_unstructured_opensearch.py --dir ./data --index my_index
-
-# Recreate index (deletes existing data)
-python scripts/ingest_unstructured_opensearch.py --dir ./data --recreate
-
-# Use LLM for better keyword extraction (costs API calls)
-python scripts/ingest_unstructured_opensearch.py --dir ./data --llm-keywords
-```
-
-**Troubleshooting:** If you already installed dependencies and get `ModuleNotFoundError: No module named 'dotenv'`:
-```bash
-pip install python-dotenv
+# Ingest the data folder
+python scripts/ingest_unstructured_opensearch.py --dir ./data
 ```
 
 ### Index Schema
@@ -679,7 +667,7 @@ Each question is classified by **category** (Technical, Business, Research, etc.
 | Service | URL | Purpose |
 |---------|-----|---------|
 | **RAG Analytics UI** | http://localhost:3000 | Chat interface with analytics |
-| Langflow | http://localhost:7861 | Visual flow builder (no auth) |
+| Langflow | From `.env` (`LANGFLOW_URL`, default port 7860) | Visual flow builder (no auth) |
 | **OpenSearch (watsonx.data)** | `${OPENSEARCH_URL}` | Vector store API (from .env) |
 | **OpenSearch Dashboards** | `${OPENSEARCH_DASHBOARDS_URL}` | Data exploration & RAG analytics (from .env) |
 
@@ -753,59 +741,6 @@ Recommended models:
 ```bash
 export OPENAI_API_KEY="your-api-key"
 ```
-
----
-
-## Troubleshooting
-
-**Connection refused or SSL errors**
-
-Verify your `OPENSEARCH_URL` is correct and includes the protocol (`https://`). Check that your watsonx.data OpenSearch instance is accessible from your network.
-
-**Authentication errors (401/403)**
-
-Double-check your `OPENSEARCH_USERNAME` and `OPENSEARCH_PASSWORD` in `.env`. Ensure the credentials have the necessary permissions for index creation and document ingestion.
-
-**`index_not_found_exception: no such index [rag_analytics]`**
-
-The analytics index wasn't created. Run the creation script:
-```bash
-./scripts/create-analytics-index.sh
-```
-
-Or restart the frontend dev server after running the setup script.
-
-**`Invalid engine: faiss` or `nmslib engine is deprecated`**
-
-Your OpenSearch instance doesn't support the specified k-NN engine. Use `lucene` engine instead (most compatible with managed instances like watsonx.data):
-- Update the `engine` field in index creation to `"engine": "lucene"`
-- The `lucene` engine is the default in this repository and works across all OpenSearch versions
-
-**`Field 'vector_field' is not knn_vector type`**
-
-The index was created with the wrong field configuration. Delete it and recreate using the curl command in Step 3.
-
-**Certificate verification errors**
-
-If you encounter SSL certificate errors with your watsonx.data instance, you may need to:
-- Add your instance's CA certificate to your system trust store
-- Or temporarily disable verification (not recommended) by modifying the client configuration
-
-**Langflow startup errors with FastAPI**
-
-Downgrade FastAPI: `uv pip install fastapi==0.123.6`
-
-**Hybrid Search: `Unknown key for a START_OBJECT in [bool]`**
-
-The JSON is missing the `query` wrapper. Use `{"query":{"bool":{"should":[...]}}}` format.
-
-**Hybrid Search: LLM outputs markdown**
-
-Add to your prompt: "Output ONLY raw JSON - no markdown, no backticks"
-
-**Unstructured API is slow**
-
-The `hi_res` strategy uses ML models. Switch to `fast` for quicker processing.
 
 ---
 
