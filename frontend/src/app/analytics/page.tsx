@@ -552,7 +552,8 @@ export default function AnalyticsPage() {
             </div>
 
             {/* OpenSearch Dashboards link (embed often fails for watsonx.data / VPN) */}
-            <div className="glass rounded-xl p-5">
+            {/* OpenSearch Dashboards card commented out until issue is solved; use top-right link to open Dashboards */}
+            {/* <div className="glass rounded-xl p-5">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-teal-accent" />
                 OpenSearch Dashboards
@@ -588,7 +589,7 @@ export default function AnalyticsPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </div> */}
           </>
         )}
       </div>

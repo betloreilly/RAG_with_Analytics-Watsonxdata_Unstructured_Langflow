@@ -102,6 +102,7 @@ main() {
     # Step 2: Python Virtual Environment
     print_header "Step 2: Setting Up Python Environment"
     
+    REUSE_VENV=0
     if [ -d "venv" ]; then
         log_warning "Virtual environment 'venv' already exists"
         if confirm "Recreate virtual environment?"; then
@@ -110,7 +111,8 @@ main() {
             python3 -m venv venv
             log_success "Virtual environment created"
         else
-            log_info "Using existing virtual environment"
+            log_info "Using existing virtual environment (skipping pip upgrade and package install)"
+            REUSE_VENV=1
         fi
     else
         log_info "Creating Python virtual environment..."
@@ -122,19 +124,24 @@ main() {
     log_info "Activating virtual environment..."
     source venv/bin/activate
     
-    # Upgrade pip
-    log_info "Upgrading pip..."
-    pip install --upgrade pip --quiet
-    
-    # Step 3: Install Python Dependencies
-    print_header "Step 3: Installing Python Dependencies"
-    
-    if [ -f "requirements.txt" ]; then
-        log_info "Installing Python packages from requirements.txt..."
-        pip install -r requirements.txt --quiet
-        log_success "Python packages installed"
+    if [ "$REUSE_VENV" -eq 0 ]; then
+        # Upgrade pip (new venv only; avoids breaking langflow's pip version constraint when reusing)
+        log_info "Upgrading pip..."
+        pip install --upgrade pip --quiet
+        
+        # Step 3: Install Python Dependencies
+        print_header "Step 3: Installing Python Dependencies"
+        
+        if [ -f "requirements.txt" ]; then
+            log_info "Installing Python packages from requirements.txt..."
+            pip install -r requirements.txt --quiet
+            log_success "Python packages installed"
+        else
+            log_warning "requirements.txt not found"
+        fi
     else
-        log_warning "requirements.txt not found"
+        print_header "Step 3: Installing Python Dependencies"
+        log_info "Skipping (using existing venv). To install/update later: pip install -r requirements.txt"
     fi
     
     # Step 4: Install Langflow
@@ -246,26 +253,23 @@ main() {
     echo "   - Update OpenSearch credentials in the flow"
     echo "   - Copy the Flow ID and update LANGFLOW_FLOW_ID in .env"
     echo ""
-    echo "2. Ingest documents (if not already done during setup):"
-    echo "   source venv/bin/activate"
-    echo "   python scripts/ingest_unstructured_opensearch.py --dir ./data"
-    echo ""
-    echo "3. Start the frontend:"
+    echo "2. Start the frontend:"
     echo "   cd frontend"
     echo "   npm run dev"
     echo "   Open http://localhost:3000"
     echo ""
-    echo "4. Access Services:"
+    echo "3. Access Services:"
     echo "   - Chat UI: http://localhost:3000"
     echo "   - Langflow: $LANGFLOW_URL"
     echo "   - OpenSearch Dashboards: ${OPENSEARCH_DASHBOARDS_URL}"
     echo ""
-    echo "5. View Analytics:"
+    echo "4. View Analytics:"
     echo "   - Chat UI Analytics: http://localhost:3000/analytics"
     echo "   - OpenSearch Dashboards: ${OPENSEARCH_DASHBOARDS_URL}"
     echo ""
     log_info "Langflow is running in the background (PID in langflow.pid)"
     log_info "To stop: kill \$(cat langflow.pid)"
+    log_info "Documents were ingested from ./data during setup. To ingest more later: source venv/bin/activate && python scripts/ingest_unstructured_opensearch.py --dir <path>"
     log_info "For more details, see README.md"
     echo ""
 }
@@ -481,7 +485,7 @@ start_langflow() {
             log_warning "Langflow is already running (PID: $OLD_PID)"
             if ! confirm "Stop and restart Langflow?"; then
                 log_info "Using existing Langflow instance at $LANGFLOW_URL"
-                import_langflow_flow
+                log_info "Import 'RAG with Opensearch.json' and set LANGFLOW_FLOW_ID in .env if not done yet (see summary at end)."
                 return
             else
                 log_info "Stopping existing Langflow instance..."

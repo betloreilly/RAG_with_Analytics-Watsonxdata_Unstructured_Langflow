@@ -251,7 +251,7 @@ When `setup.sh` completes, it will print reminders. Do the following in order:
      ```
    - Open **http://localhost:3000** in your browser. You should see the chat and analytics.
 
-**You’re done.** Use the chat to ask questions; the Analytics page will show quality and usage over time. OpenSearch Dashboards will be available after you prepare them (configure the Dashboards URL, run `npm run setup-opensearch` in `frontend/`, and create index patterns and visualizations)—see [OpenSearch Dashboards Guide](docs/OpenSearch-Dashboards-Guide.md) for details.
+**You’re done.** Use the chat to ask questions; the Analytics page will show quality and usage over time. OpenSearch Dashboards will be available once you set the Dashboards URL in `.env` and prepare index patterns and visualizations using the [OpenSearch Dashboards Guide](docs/OpenSearch-Dashboards-Guide.md).
 
 **What the script does (for reference):**
 
