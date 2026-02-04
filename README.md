@@ -1,6 +1,8 @@
 # RAG Pipeline with Monitoring & Analytics
 
-**A RAG system with built-in quality monitoring, analytics dashboards, and automated LLM-based evaluation.**
+**Repository:** `RAG_with_Analytics-Watsonxdata_Unstructured_Langflow`
+
+A RAG system with built-in quality monitoring, analytics dashboards, and automated LLM-based evaluation.
 
 Unlike basic RAG demos, this project includes observability through OpenSearch Dashboards, giving you real-time insights into answer quality, user behavior, and system performance.
 
@@ -123,12 +125,12 @@ The `setup.sh` script automates the installation. You can get the project in one
 
 - **Clone with Git** (requires Git; no GitHub account or SSH key needed for public repos):
   ```bash
-  git clone https://github.com/YOUR-ORG/Unstructured_OpenSearch.git
-  cd Unstructured_OpenSearch
+  git clone https://github.com/YOUR-ORG/RAG_with_Analytics-Watsonxdata_Unstructured_Langflow.git
+  cd RAG_with_Analytics-Watsonxdata_Unstructured_Langflow
   ```
   Replace the URL with your actual repository URL.
 
-- **Or download as a ZIP** (no Git required): On the GitHub repo page, click the green **Code** button → **Download ZIP**. Unzip the file, then in a terminal run `cd` into the unzipped folder (e.g. `cd ~/Downloads/Unstructured_OpenSearch-main`). See Step 2 below for full details.
+- **Or download as a ZIP** (no Git required): On the GitHub repo page, click the green **Code** button → **Download ZIP**. Unzip the file, then in a terminal run `cd` into the unzipped folder (e.g. `cd ~/Downloads/RAG_with_Analytics-Watsonxdata_Unstructured_Langflow-main`). See Step 2 below for full details.
 
 Then run `./setup.sh` (and if you used the ZIP, run `chmod +x setup.sh` first if you get “Permission denied”).
 
@@ -153,8 +155,8 @@ Choose **one** of these.
 In the terminal, run (replace the URL with your actual repository URL):
 
 ```bash
-git clone https://github.com/YOUR-ORG/Unstructured_OpenSearch.git
-cd Unstructured_OpenSearch
+git clone https://github.com/YOUR-ORG/RAG_with_Analytics-Watsonxdata_Unstructured_Langflow.git
+cd RAG_with_Analytics-Watsonxdata_Unstructured_Langflow
 ```
 
 **B) Download as a ZIP (no Git required)**
@@ -163,19 +165,19 @@ cd Unstructured_OpenSearch
 2. Click the green **Code** button (top right of the file list).
 3. Click **Download ZIP**.
 4. Save the ZIP file, then **unzip it** (double-click it, or right-click → Extract).
-5. Remember where the unzipped folder is (e.g. `Downloads/Unstructured_OpenSearch-main`). You’ll open the terminal in this folder in the next step.
+5. Remember where the unzipped folder is (e.g. `Downloads/RAG_with_Analytics-Watsonxdata_Unstructured_Langflow-main`). You’ll open the terminal in this folder in the next step.
 
 ---
 
 #### Step 3: Go into the project folder in the terminal
 
-- **If you cloned with Git:** You’re already in the right place after `cd Unstructured_OpenSearch`. If not, run:
+- **If you cloned with Git:** You’re already in the right place after `cd RAG_with_Analytics-Watsonxdata_Unstructured_Langflow`. If not, run:
   ```bash
-  cd /path/to/Unstructured_OpenSearch
+  cd /path/to/RAG_with_Analytics-Watsonxdata_Unstructured_Langflow
   ```
 - **If you downloaded the ZIP:** Go into the unzipped folder. For example, if it’s on your Desktop:
   ```bash
-  cd ~/Desktop/Unstructured_OpenSearch-main
+  cd ~/Desktop/RAG_with_Analytics-Watsonxdata_Unstructured_Langflow-main
   ```
   Use your real path (e.g. `Downloads` instead of `Desktop` if that’s where it is).
 
