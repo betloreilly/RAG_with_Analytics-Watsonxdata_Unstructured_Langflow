@@ -1,42 +1,300 @@
-# RAG Pipeline with Langflow and OpenSearch
+# RAG Pipeline with Monitoring & Analytics
 
-This project demonstrates how to build a Retrieval-Augmented Generation (RAG) system using Langflow's visual interface with OpenSearch as the vector store. It includes a Python ingestion script that uses Unstructured.io to parse documents and create proper schema for hybrid search.
+**A RAG system with built-in quality monitoring, analytics dashboards, and automated LLM-based evaluation.**
 
-## Reference Architecture
+Unlike basic RAG demos, this project includes observability through OpenSearch Dashboards, giving you real-time insights into answer quality, user behavior, and system performance.
 
-![Architecture](/data/OpensearchRAG.png)
- 
-Langflow provides a visual drag-and-drop interface for building RAG flows. Documents are parsed using Unstructured.io, stored in OpenSearch with vector embeddings, and retrieved to augment LLM responses.
+## What Makes This Different from Other RAG Demos
 
+Most RAG repositories focus only on retrieval and generation. This project adds **observability** using OpenSearch's built-in analytics capabilities.
 
-![Langflow](data/demo_docs/langflow.gif)
+### Key Differentiators
+
+**LLM-as-a-Judge Quality Analysis**
+- Automatic evaluation of every answer with quality scores (0-1)
+- Categorization: good/fair/poor with specific improvement reasons
+- Runs asynchronously to avoid impacting response time
+
+**OpenSearch Dashboards Integration**
+- Pre-built visualizations for quality trends and patterns
+- Question categorization (Technical, Business, Research, etc.)
+- Performance monitoring (latency, response time)
+- No separate analytics infrastructure needed—leverage OpenSearch
+
+**Actionable Insights**
+- Identify gaps: which questions consistently get poor answers
+- Track improvements: see quality trends after adding documents
+- Understand usage: what topics users ask about most
+- Prioritize work: focus on high-impact improvements
+
+![RAG Analytics Dashboard](/data/monitor.png)
+*Real-time monitoring: quality distribution, question categories, latency tracking, and questions flagged for improvement*
+
+### Comparison with Basic RAG Demos
+
+| Feature | Basic RAG Demo | **This Repo** |
+|---------|----------------|---------------|
+| Q&A Functionality | Yes | Yes |
+| Vector Search | Yes | Yes (Hybrid: Vector + BM25 + Boosting) |
+| Quality Monitoring | No | Yes (Automatic LLM-as-a-Judge) |
+| Analytics Dashboard | No | Yes (Pre-built OpenSearch Dashboards) |
+| Question Categorization | No | Yes (Technical, Business, etc.) |
+| Improvement Tracking | No | Yes (Track quality trends over time) |
+| Identify Gaps | Manual testing | Automatic flagging of poor answers |
+| Performance Metrics | No | Yes (Latency tracking per interaction) |
+
+### When to Use This Repo
+
+**Use this if you need:**
+- A RAG system with built-in monitoring and analytics
+- Automatic quality evaluation to catch bad answers
+- Insights to continuously improve your RAG system
+
+**Use a simpler demo if:**
+- You're just learning RAG basics
+- You don't need monitoring or analytics
+- You want minimal setup complexity
+
+## System Architecture
+
+![System Architecture](/data/OpensearchRAG.png)
+
+This system combines best-in-class tools for a complete, observable RAG pipeline:
+
+| Component | Purpose | Why It Matters |
+|-----------|---------|----------------|
+| **Langflow** | Visual RAG orchestration | Build flows without code, easy iteration |
+| **watsonx.data OpenSearch** | Vector store + analytics database | Hybrid search (BM25 + k-NN) + built-in dashboards |
+| **Unstructured.io** | Document parsing | Preserves structure (headers, tables), intelligent chunking |
+| **Next.js** | Chat UI + API | Modern interface with server-side analytics processing |
+| **LLM-as-a-Judge** | Quality analysis | GPT-4o-mini evaluates answers asynchronously |
+| **OpenSearch Dashboards** | Visualization | Pre-built analytics dashboards, no separate tools needed |
+
+### Data Flow
+
+1. **Ingestion**: Documents → Unstructured.io → Embeddings → OpenSearch (`hybrid_demo` index)
+2. **Query**: Question → Hybrid search (vector + BM25 + keyword boost) → Context retrieval
+3. **Generation**: Context + Question → LLM → Answer
+4. **Monitoring**: Question + Answer → LLM-as-a-Judge → Quality metrics → `rag_analytics` index
+5. **Visualization**: OpenSearch Dashboards reads `rag_analytics` → Real-time insights
+
+![Langflow Interface](data/demo_docs/langflow.gif)
+*Visual flow builder makes it easy to modify retrieval strategies and prompts*
+
+## Why Monitoring Matters for RAG
+
+Most RAG demos stop at "does it answer questions?" This project goes further by answering:
+- **How good are the answers?** Track quality scores and trends over time
+- **Where are the gaps?** Identify topics with poor responses that need more documents
+- **What are users asking?** Understand question patterns and categories
+- **Is it getting better?** Monitor improvements after adding documents or tuning prompts
+
+OpenSearch Dashboards provides a unified view of all RAG interactions, making it easy to spot issues and measure improvements.
+
+---
 
 ## Prerequisites
 
-Before starting, ensure you have Docker Desktop and Python 3.9+ installed. You can verify with `docker --version` and `python --version`.
+**What you need before you start:**
 
-Docker runs OpenSearch as a background service on port 9200. Python runs Langflow separately, which connects to OpenSearch over HTTP.
+| What | Why | How to check or get it |
+|------|-----|------------------------|
+| **Python 3.9 or newer** | Runs ingestion and Langflow | In a terminal: `python3 --version` (or `python --version`). If missing, install from [python.org](https://www.python.org/downloads/). |
+| **Node.js 18 or newer** | Runs the chat and analytics UI | In a terminal: `node --version`. If missing, install from [nodejs.org](https://nodejs.org/). |
+| **OpenSearch (watsonx.data)** | Stores documents and analytics | You need: **URL** (e.g. `https://...:9200`), **username**, and **password**. Get these from your watsonx.data OpenSearch service in the IBM Cloud console. |
+| **OpenAI API key** | Embeddings and answer quality checks | Create an API key at [platform.openai.com](https://platform.openai.com/api-keys). |
+| **Unstructured.io API key** | Document parsing (PDF, Word, etc.) | Sign up at [unstructured.io](https://unstructured.io/) and create an API key. |
+
+Have these ready before running the setup script so you can paste them when prompted.
 
 ---
 
 ## Quick Start
 
-### Step 1: Start OpenSearch
+This section gets you from zero to a running RAG app in two parts: **run the setup script**, then **do three follow-up steps** (import the flow in Langflow, ingest documents, start the web app).
 
-Navigate to the project directory and start the OpenSearch containers:
+### Option 1: Quick setup with setup.sh (recommended)
+
+The `setup.sh` script automates the installation. You can get the project in one of two ways: **clone with Git** (if you have Git and use it) or **download as a ZIP** (no Git or SSH keys required). Both are covered below.
+
+**In short:** Get the project (clone or download ZIP) → open a terminal in the project folder → run `./setup.sh` → answer the prompts → then do the three “After setup” steps below.
+
+**Get the project (choose one):**
+
+- **Clone with Git** (requires Git; no GitHub account or SSH key needed for public repos):
+  ```bash
+  git clone https://github.com/YOUR-ORG/Unstructured_OpenSearch.git
+  cd Unstructured_OpenSearch
+  ```
+  Replace the URL with your actual repository URL.
+
+- **Or download as a ZIP** (no Git required): On the GitHub repo page, click the green **Code** button → **Download ZIP**. Unzip the file, then in a terminal run `cd` into the unzipped folder (e.g. `cd ~/Downloads/Unstructured_OpenSearch-main`). See Step 2 below for full details.
+
+Then run `./setup.sh` (and if you used the ZIP, run `chmod +x setup.sh` first if you get “Permission denied”).
+
+---
+
+#### Step 1: Open a terminal
+
+You’ll type all commands in a **terminal** (command line):
+
+- **macOS:** Open **Terminal** (Applications → Utilities) or iTerm.
+- **Windows:** Open **PowerShell** or **Command Prompt** (e.g. search for “PowerShell” in the Start menu).
+- **Linux:** Open your distribution’s **Terminal** app.
+
+---
+
+#### Step 2: Get the project on your machine
+
+Choose **one** of these.
+
+**A) Clone with Git (if you use Git)**
+
+In the terminal, run (replace the URL with your actual repository URL):
 
 ```bash
-cd /path/to/Unstructured_OpenSearch
-docker-compose up -d
+git clone https://github.com/YOUR-ORG/Unstructured_OpenSearch.git
+cd Unstructured_OpenSearch
 ```
 
-Verify it's running:
+**B) Download as a ZIP (no Git required)**
+
+1. In your browser, go to the **GitHub repository page** for this project.
+2. Click the green **Code** button (top right of the file list).
+3. Click **Download ZIP**.
+4. Save the ZIP file, then **unzip it** (double-click it, or right-click → Extract).
+5. Remember where the unzipped folder is (e.g. `Downloads/Unstructured_OpenSearch-main`). You’ll open the terminal in this folder in the next step.
+
+---
+
+#### Step 3: Go into the project folder in the terminal
+
+- **If you cloned with Git:** You’re already in the right place after `cd Unstructured_OpenSearch`. If not, run:
+  ```bash
+  cd /path/to/Unstructured_OpenSearch
+  ```
+- **If you downloaded the ZIP:** Go into the unzipped folder. For example, if it’s on your Desktop:
+  ```bash
+  cd ~/Desktop/Unstructured_OpenSearch-main
+  ```
+  Use your real path (e.g. `Downloads` instead of `Desktop` if that’s where it is).
+
+You should now be *in* the project folder (you’ll see files like `README.md`, `setup.sh` when you run `ls` or `dir`).
+
+---
+
+#### Step 4: Run the setup script
+
+Run:
 
 ```bash
-curl http://localhost:9200
+./setup.sh
 ```
 
-### Step 2: Set Up Python Environment
+- **If you get “Permission denied”** (common after downloading the ZIP), run this once, then try again:
+  ```bash
+  chmod +x setup.sh
+  ./setup.sh
+  ```
+  (`chmod +x` makes the script executable; ZIP downloads sometimes don’t keep that permission.)
+
+The script will ask you for the items from the Prerequisites table. Have them ready so you can paste or type when prompted.
+
+**What the script will ask you (have these ready):**
+
+- **OpenSearch URL** – Your watsonx.data OpenSearch URL (e.g. `https://xxxx.os....ibmappdomain.cloud:9200/`).
+- **OpenSearch username** – Your OpenSearch username.
+- **OpenSearch password** – Your OpenSearch password.
+- **OpenAI API key** – From [platform.openai.com](https://platform.openai.com/api-keys).
+- **Unstructured.io API key** – From your Unstructured.io account.
+
+The script will create a `.env` file with these values and will derive the OpenSearch Dashboards URL for you. It will also create the Python environment, install Langflow, create the OpenSearch indices, start Langflow, and install the frontend dependencies.
+
+---
+
+#### Step 5: After the script finishes – do these three things
+
+When `setup.sh` completes, it will print reminders. Do the following in order:
+
+1. **Import the RAG flow in Langflow**
+   - Open **http://localhost:7861** in your browser (no login).
+   - In Langflow, use the **Upload** option on the **left sidebar** and select the file **`RAG with Opensearch.json`** from this project folder (or drag the file onto the canvas).
+   - In Langflow **Settings** (gear icon), add a **Global Variable**: name `OPENAI_API_KEY`, value = your OpenAI API key.
+   - In the flow, click the **OpenSearch** component and set its **URL**, **username**, **password**, and **index name** (`hybrid_demo`) to match your `.env`.
+
+2. **Put the Flow ID into `.env`**
+   - In the browser, check the Langflow URL; it will look like `http://localhost:7861/flow/abc123-def456-...`. The last part is the **Flow ID**.
+   - Open the project’s **`.env`** file in a text editor and set:
+     ```bash
+     LANGFLOW_FLOW_ID=abc123-def456-...
+     ```
+     (use your actual Flow ID).
+
+3. **Ingest documents and start the web app**
+   - In the terminal (in the project folder), run:
+     ```bash
+     source venv/bin/activate
+     python scripts/ingest_unstructured_opensearch.py --dir ./data
+     ```
+     (On Windows: `venv\Scripts\activate` then the same `python` command.)
+   - Then start the chat UI:
+     ```bash
+     cd frontend
+     npm run dev
+     ```
+   - Open **http://localhost:3000** in your browser. You should see the chat and analytics.
+
+**You’re done.** Use the chat to ask questions; the Analytics page and OpenSearch Dashboards will show quality and usage over time.
+
+---
+
+**What the script does (for reference):**
+
+- Checks for Python 3.9+ and Node.js 18+
+- Creates a Python virtual environment and installs dependencies (including Langflow)
+- Creates a single `.env` file and prompts you for OpenSearch and API keys
+- Creates the OpenSearch indices (`hybrid_demo` and `rag_analytics`) used by the app
+- Starts Langflow (no login) and prints the manual steps for importing the flow
+- Installs frontend dependencies so you can run `npm run dev` in `frontend/`
+
+For step-by-step setup **without** the script (e.g. if the script fails or you prefer to run each step yourself), see **Option 2: Manual Setup** below.
+
+**Troubleshooting**
+
+- The script may ask for confirmation before overwriting existing files (e.g. `.env` or `venv`). Type `y` and Enter to continue.
+- **Analytics page shows “index not found” for rag_analytics:** From the project folder run `./scripts/create-analytics-index.sh`, then restart the frontend (`cd frontend` and `npm run dev` again).
+- **Stop or restart Langflow:** Run `./stop-langflow.sh` to stop. To start again: `source venv/bin/activate`, then `export LANGFLOW_SKIP_AUTH_AUTO_LOGIN=true`, then `nohup langflow run --host 0.0.0.0 --port 7861 > langflow.log 2>&1 &`, then `echo $! > langflow.pid`. View logs with `tail -f langflow.log`.
+
+---
+
+### Option 2: Manual Setup
+
+Use this if the setup script does not work on your system or you want to run each step yourself (create `.env`, Python env, indices, Langflow, frontend) without the script.
+
+#### Step 1: Set Environment Variables
+
+Create a `.env` file in the project root with your watsonx.data OpenSearch credentials:
+
+```bash
+# Copy the example file (single .env for everything)
+cp env-example.txt .env
+
+# Edit .env and add your watsonx.data OpenSearch details:
+OPENSEARCH_URL=https://your-opensearch-instance.com:9200
+OPENSEARCH_USERNAME=your-username
+OPENSEARCH_PASSWORD=your-password
+
+# Dashboards URL (NEXT_PUBLIC_ prefix makes it available to browser)
+NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL=https://your-dashboards-instance.com:5601
+
+# Also add your API keys:
+OPENAI_API_KEY=your-openai-key
+UNSTRUCTURED_API_KEY=your-unstructured-key
+```
+
+**Note**: Next.js loads the root `.env` via `next.config.js` (single file for the whole project).
+
+#### Step 2: Set Up Python Environment
 
 Create and activate a virtual environment, then install Langflow:
 
@@ -51,39 +309,23 @@ uv pip install fastapi==0.123.6  # Required compatibility fix
 
 The FastAPI downgrade addresses a known compatibility issue in the Langflow community.
 
-### Step 3: Set Environment Variables
+#### Step 3: Create the OpenSearch Index
 
-You'll need API keys for document parsing and your choice of LLM:
-
-```bash
-# For PDF processing
-export UNSTRUCTURED_API_KEY="your-unstructured-api-key"
-
-# Choose one LLM provider:
-
-# IBM watsonx.ai
-export WATSONX_API_KEY="your-api-key"
-export WATSONX_PROJECT_ID="your-project-id"
-export WATSONX_URL="https://us-south.ml.cloud.ibm.com"
-
-# Or OpenAI
-export OPENAI_API_KEY="your-openai-api-key"
-```
-
-### Step 4: Create the OpenSearch Index
-
-OpenSearch 3.x requires pre-creating the index with the correct vector field configuration. Langflow defaults to a deprecated engine that won't work otherwise.
+Create the index in your watsonx.data OpenSearch instance with the correct vector field configuration:
 
 ```bash
-curl -X PUT "http://localhost:9200/hybrid_demo" -H 'Content-Type: application/json' -d '
+# Replace with your watsonx.data credentials
+curl -X PUT "${OPENSEARCH_URL}/hybrid_demo" \
+  -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}" \
+  -H 'Content-Type: application/json' -d '
 {
   "settings": { "index": { "knn": true } },
   "mappings": {
     "properties": {
-      "vector_field": {
-        "type": "knn_vector",
-        "dimension": 1536,
-        "method": { "name": "hnsw", "space_type": "cosinesimil", "engine": "faiss" }
+        "vector_field": {
+          "type": "knn_vector",
+          "dimension": 1536,
+          "method": { "name": "hnsw", "space_type": "cosinesimil", "engine": "lucene" }
       },
       "text": { "type": "text" },
       "metadata": { "type": "object", "enabled": true }
@@ -93,24 +335,61 @@ curl -X PUT "http://localhost:9200/hybrid_demo" -H 'Content-Type: application/js
 '
 ```
 
-The dimension of 1536 matches OpenAI's `text-embedding-3-small` model. Adjust this if using a different embedding model (e.g., 384 for HuggingFace's all-MiniLM-L6-v2).
+The dimension of 1536 matches OpenAI's `text-embedding-3-small` model.
 
-### Step 5: Start Langflow
+**Note on k-NN Engine:** We use `lucene` as the k-NN engine because it's the most compatible with managed OpenSearch instances like watsonx.data. While `faiss` and `nmslib` engines exist, they may not be available on all OpenSearch deployments. The `lucene` engine provides excellent performance and broad compatibility.
+
+#### Step 4: Start Langflow
 
 ```bash
-langflow run
+LANGFLOW_SKIP_AUTH_AUTO_LOGIN=true langflow run --host 0.0.0.0 --port 7861
 ```
 
-Open http://localhost:7860 in your browser.
+Open http://localhost:7861 in your browser (no login required).
 
-### Step 6: Import the Pre-built Flow (Optional)
+#### Step 5: Import and Configure the RAG Flow
 
-A ready-to-use RAG flow is included in this repo. To import it:
+A ready-to-use RAG flow is included in this repo.
 
-1. In Langflow, click **My Projects** → **New Project** → **Import**
-2. Select `RAG with Opensearch.json` from this repo
-3. Update the OpenSearch connection settings in the flow
-4. Add your API keys (OpenAI/watsonx)
+**Import the Flow:**
+
+1. Open Langflow at http://localhost:7861 (no login required)
+2. Look for the **Upload** button/icon on the **LEFT sidebar**
+3. Click Upload and select `RAG with Opensearch.json` from this directory
+   - Or drag and drop the JSON file directly onto the canvas
+4. The flow will load in the canvas
+
+**Set Global Variables (OpenAI API Key):**
+
+1. Click the **⚙️ Settings** icon in the top-right corner
+2. Navigate to **Global Variables** or **Variables** section
+3. Add a new variable:
+   - **Name**: `OPENAI_API_KEY`
+   - **Value**: Your OpenAI API key (from your OpenAI account)
+   - **Type**: Secret (if available)
+4. Click **Save**
+
+This makes your OpenAI key available to all components in the flow without hardcoding it.
+
+**Configure OpenSearch Component:**
+
+1. Find the **OpenSearch** component in the flow canvas
+2. Click on it to open the component settings
+3. Update the following fields:
+   - **URL**: `https://your-opensearch-instance.com:9200` (from your `.env`)
+   - **Username**: Your OpenSearch username
+   - **Password**: Your OpenSearch password
+   - **Index Name**: `hybrid_demo`
+4. Click **Save** or close the settings panel
+
+**Get Your Flow ID:**
+
+1. Look at the browser URL bar: `http://localhost:7861/flow/YOUR-FLOW-ID-HERE`
+2. Copy the Flow ID (the UUID at the end of the URL)
+3. Update your `.env` file:
+   ```bash
+   LANGFLOW_FLOW_ID=your-flow-id-here
+   ```
 
 This flow includes Chat Input, OpenSearch retrieval, RAG prompt, and LLM response components pre-configured.
 
@@ -127,7 +406,7 @@ You have two options to ingest documents into OpenSearch:
 
 **Langflow UI**: Build an ingestion flow visually (File Loader → Unstructured → Embeddings → OpenSearch). Simple but only creates `text` and `vector_field`.
 
-**Python Script**: Creates an optimized schema with `keywords`, `title`, `summary` fields and custom analyzers for better BM25 ranking. Recommended for production hybrid search.
+**Python Script**: Creates an optimized schema with `keywords`, `title`, `summary` fields and custom analyzers for better BM25 ranking. Recommended for hybrid search.
 
 ---
 
@@ -149,12 +428,11 @@ The `scripts/ingest_unstructured_opensearch.py` script provides a complete inges
 # Activate your virtual environment
 source venv/bin/activate
 
-# Install dependencies
+# Install dependencies (includes python-dotenv for .env file loading)
 pip install -r requirements.txt
 
-# Set required environment variables
-export UNSTRUCTURED_API_KEY="your-key"
-export OPENAI_API_KEY="your-key"
+# The script automatically loads credentials from .env file
+# No need to export environment variables manually!
 
 # Ingest a single file
 python scripts/ingest_unstructured_opensearch.py --file /path/to/document.pdf
@@ -170,6 +448,11 @@ python scripts/ingest_unstructured_opensearch.py --dir ./data --recreate
 
 # Use LLM for better keyword extraction (costs API calls)
 python scripts/ingest_unstructured_opensearch.py --dir ./data --llm-keywords
+```
+
+**Troubleshooting:** If you already installed dependencies and get `ModuleNotFoundError: No module named 'dotenv'`:
+```bash
+pip install python-dotenv
 ```
 
 ### Index Schema
@@ -298,14 +581,30 @@ The double braces `{{` and `}}` are required because Langflow uses single braces
 
 ---
 
-## RAG Analytics UI
+## Production Monitoring with RAG Analytics UI
 
-A Next.js web interface is available in the `frontend/` directory that provides:
+The Next.js frontend provides a chat interface with built-in monitoring. Every interaction is evaluated for quality, categorized, and surfaced in analytics—with actionable insights through OpenSearch Dashboards.
 
-- **Chat Interface**: Beautiful UI to interact with your RAG system
-- **Automatic Logging**: Every Q&A is logged to OpenSearch with metadata
-- **LLM Quality Analysis**: Automatic quality scoring and categorization
-- **Analytics Dashboard**: View metrics, find questions needing improvement
+### Key Monitoring Features
+
+**Automatic Quality Analysis**
+- Every answer evaluated by GPT-4o-mini (LLM-as-a-Judge)
+- Quality scores (0-1) and labels (good/fair/poor)
+- Flags for answers needing improvement with specific reasons
+
+**Real-time Analytics Dashboard**
+- Quality metrics and trends over time
+- Question categorization (Technical, Business, Research, etc.)
+- Latency monitoring and performance tracking
+- Identify questions needing better answers
+
+**OpenSearch Dashboards Integration**
+- Pre-built visualizations for deep analysis
+- Custom queries and aggregations on `rag_analytics` index
+- Time-series analysis of quality trends
+- Category and topic distribution charts
+
+See the screenshot at the top of this README for an example of the analytics dashboard in action.
 
 ### Quick Start
 
@@ -313,7 +612,9 @@ A Next.js web interface is available in the `frontend/` directory that provides:
 cd frontend
 npm install
 cp env-example.txt .env.local
-# Edit .env.local with your OPENAI_API_KEY and LANGFLOW_FLOW_ID
+# Edit .env.local with:
+# - watsonx.data OpenSearch credentials (URL, username, password)
+# - OPENAI_API_KEY and LANGFLOW_FLOW_ID
 
 npm run setup-opensearch  # Creates indices and dashboards
 npm run dev               # Start the UI at http://localhost:3000
@@ -323,7 +624,7 @@ npm run dev               # Start the UI at http://localhost:3000
 
 Each interaction logs: question, answer, timestamp, latency, quality score (0-1), quality label (good/fair/poor), category, question type, and improvement suggestions.
 
-View detailed analytics at http://localhost:5601 (OpenSearch Dashboards).
+View detailed analytics at your watsonx.data OpenSearch Dashboards URL (from `.env.local`).
 
 See `frontend/README.md` for full documentation.
 
@@ -376,46 +677,35 @@ Each question is classified by **category** (Technical, Business, Research, etc.
 | Service | URL | Purpose |
 |---------|-----|---------|
 | **RAG Analytics UI** | http://localhost:3000 | Chat interface with analytics |
-| Langflow | http://localhost:7860 | Visual flow builder |
-| OpenSearch | http://localhost:9200 | Vector store API |
-| OpenSearch Dashboards | http://localhost:5601 | Data exploration & RAG analytics |
+| Langflow | http://localhost:7861 | Visual flow builder (no auth) |
+| **OpenSearch (watsonx.data)** | `${OPENSEARCH_URL}` | Vector store API (from .env) |
+| **OpenSearch Dashboards** | `${OPENSEARCH_DASHBOARDS_URL}` | Data exploration & RAG analytics (from .env) |
 
 ---
 
 ## OpenSearch Commands
 
-Common commands for managing OpenSearch:
+Common commands for working with your watsonx.data OpenSearch instance:
 
 ```bash
-# Start containers
-docker-compose up -d
+# Verify OpenSearch is accessible
+curl -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}" "${OPENSEARCH_URL}"
 
-# Check status
-docker-compose ps
+# List all indices
+curl -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}" "${OPENSEARCH_URL}/_cat/indices?v"
 
-# View logs
-docker-compose logs -f opensearch
+# Count documents in hybrid_demo index
+curl -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}" "${OPENSEARCH_URL}/hybrid_demo/_count"
 
-# Stop containers
-docker-compose down
-
-# Stop and remove all data
-docker-compose down -v
-```
-
-Verify OpenSearch is working:
-
-```bash
-curl http://localhost:9200
-curl http://localhost:9200/_cat/indices?v
-curl http://localhost:9200/hybrid_demo/_count
+# Check cluster health
+curl -u "${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD}" "${OPENSEARCH_URL}/_cluster/health?pretty"
 ```
 
 ---
 
 ## OpenSearch Dev Tools Queries
 
-Access Dev Tools at http://localhost:5601 and try these queries:
+Access Dev Tools at your watsonx.data OpenSearch Dashboards URL and try these queries:
 
 ```
 # Browse documents
@@ -466,30 +756,38 @@ export OPENAI_API_KEY="your-api-key"
 
 ## Troubleshooting
 
-**SSL Error: `[SSL] record layer failure`**
+**Connection refused or SSL errors**
 
-Langflow is trying HTTPS but local OpenSearch uses HTTP. Ensure your URL is `http://localhost:9200` (not `https://`).
+Verify your `OPENSEARCH_URL` is correct and includes the protocol (`https://`). Check that your watsonx.data OpenSearch instance is accessible from your network.
 
-**`nmslib engine is deprecated`**
+**Authentication errors (401/403)**
 
-OpenSearch 3.x removed the nmslib engine. Pre-create the index with `faiss` engine as shown in the Quick Start section.
+Double-check your `OPENSEARCH_USERNAME` and `OPENSEARCH_PASSWORD` in `.env`. Ensure the credentials have the necessary permissions for index creation and document ingestion.
+
+**`index_not_found_exception: no such index [rag_analytics]`**
+
+The analytics index wasn't created. Run the creation script:
+```bash
+./scripts/create-analytics-index.sh
+```
+
+Or restart the frontend dev server after running the setup script.
+
+**`Invalid engine: faiss` or `nmslib engine is deprecated`**
+
+Your OpenSearch instance doesn't support the specified k-NN engine. Use `lucene` engine instead (most compatible with managed instances like watsonx.data):
+- Update the `engine` field in index creation to `"engine": "lucene"`
+- The `lucene` engine is the default in this repository and works across all OpenSearch versions
 
 **`Field 'vector_field' is not knn_vector type`**
 
-The index was created with the wrong field configuration. Delete it and recreate using the curl command in Step 4.
+The index was created with the wrong field configuration. Delete it and recreate using the curl command in Step 3.
 
-**`vm.max_map_count [65530] is too low`**
+**Certificate verification errors**
 
-OpenSearch needs more virtual memory. On macOS, run:
-
-```bash
-docker run -it --privileged --pid=host debian nsenter -t 1 -m -u -n -i sh
-sysctl -w vm.max_map_count=262144
-exit
-docker-compose up -d
-```
-
-This setting resets when Docker restarts.
+If you encounter SSL certificate errors with your watsonx.data instance, you may need to:
+- Add your instance's CA certificate to your system trust store
+- Or temporarily disable verification (not recommended) by modifying the client configuration
 
 **Langflow startup errors with FastAPI**
 
@@ -527,11 +825,24 @@ For hybrid search, use a fast LLM like gpt-4o-mini for keyword extraction since 
 
 ---
 
-## Next Steps
+## Next Steps: Dive into Analytics
 
-Once you have the basic RAG pipeline running, continue with these guides:
+Once you have the basic RAG pipeline running, explore the monitoring capabilities:
 
-| Step | Guide | Description |
-|------|-------|-------------|
-| 1 | [OpenSearch Dashboards Guide](docs/OpenSearch-Dashboards-Guide.md) | Learn how to create visualizations and dashboards to monitor your RAG system |
-| 2 | [RAG Analytics Guide](docs/RAG-Analytics-Architecture.md) | Understand the full architecture and how quality analysis works |
+| Priority | Guide | What You'll Learn |
+|----------|-------|-------------------|
+| **Start Here** | [RAG Analytics Guide](docs/RAG-Analytics-Architecture.md) | Complete analytics architecture, how LLM-as-a-Judge works, quality scoring methodology |
+| **Dashboards** | [OpenSearch Dashboards Guide](docs/OpenSearch-Dashboards-Guide.md) | Create custom visualizations, explore the `rag_analytics` index, build your own dashboards |
+| **Production** | [One-Pager Architecture](docs/RAG-One-Pager-Architecture.md) | Concise reference for the complete system (includes PDF version) |
+
+### What You Can Monitor
+
+With this setup, you can answer questions like:
+- "What percentage of answers are rated 'good' vs 'poor'?"
+- "Which question categories have the lowest quality scores?"
+- "What topics do users ask about most?"
+- "Has quality improved since I added new documents?"
+- "Which specific questions need better answers?"
+- "What's my average response latency by category?"
+
+All queryable through OpenSearch Dashboards or the built-in analytics UI.

@@ -2,6 +2,8 @@
 
 This is the web interface for your smart Q&A system. Users ask questions in a chat window, and behind the scenes, every conversation gets logged and analyzed automatically. A separate AI reviews each answer, scores its quality, and categorizes the question. Over time, you build up valuable insights about what questions people are asking and how well your system is answering them.
 
+**Note**: This project uses a single `.env` file at the project root. Next.js loads it via `next.config.js` (no separate frontend env file).
+
 ## Features
 
 - **Chat Interface**: Beautiful, modern UI to interact with your RAG system
@@ -52,7 +54,7 @@ Each interaction logs:
 ### 1. Prerequisites
 
 - Node.js 18+
-- Docker (for OpenSearch)
+- **watsonx.data managed OpenSearch instance** (URL, username, password)
 - Langflow running with your RAG flow
 - OpenAI API key
 
@@ -68,7 +70,11 @@ npm install
 # Copy environment file
 cp env-example.txt .env.local
 
-# Edit .env.local with your values:
+# Edit .env.local with your watsonx.data OpenSearch credentials:
+# - OPENSEARCH_URL (your watsonx.data OpenSearch URL)
+# - OPENSEARCH_USERNAME (your username)
+# - OPENSEARCH_PASSWORD (your password)
+# - OPENSEARCH_DASHBOARDS_URL (your Dashboards URL)
 # - OPENAI_API_KEY (required for analysis)
 # - LANGFLOW_FLOW_ID (your flow's ID)
 ```
@@ -76,8 +82,8 @@ cp env-example.txt .env.local
 ### 3. Start Services
 
 ```bash
-# Start OpenSearch (from project root)
-docker-compose up -d
+# Make sure Langflow is running
+langflow run
 
 # Setup OpenSearch indices and dashboards
 npm run setup-opensearch
@@ -89,17 +95,20 @@ npm run dev
 ### 4. Access
 
 - **Chat UI**: http://localhost:3000
-- **OpenSearch Dashboards**: http://localhost:5601
+- **OpenSearch Dashboards**: Use your `OPENSEARCH_DASHBOARDS_URL` from `.env.local`
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key for quality analysis | Required |
-| `LANGFLOW_URL` | Langflow API URL | `http://localhost:7860` |
-| `LANGFLOW_FLOW_ID` | Your Langflow flow ID | Required |
-| `OPENSEARCH_URL` | OpenSearch URL | `http://localhost:9200` |
-| `OPENSEARCH_DASHBOARDS_URL` | Dashboards URL | `http://localhost:5601` |
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key for quality analysis | Yes |
+| `LANGFLOW_URL` | Langflow API URL | Yes (default: `http://localhost:7860`) |
+| `LANGFLOW_FLOW_ID` | Your Langflow flow ID | Yes |
+| `OPENSEARCH_URL` | watsonx.data OpenSearch URL (e.g., `https://...`) | Yes |
+| `OPENSEARCH_USERNAME` | watsonx.data OpenSearch username | Yes |
+| `OPENSEARCH_PASSWORD` | watsonx.data OpenSearch password | Yes |
+| `OPENSEARCH_DASHBOARDS_URL` | watsonx.data Dashboards URL | Yes |
+| `NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL` | Public Dashboards URL for client-side links | Yes |
 
 ## API Endpoints
 

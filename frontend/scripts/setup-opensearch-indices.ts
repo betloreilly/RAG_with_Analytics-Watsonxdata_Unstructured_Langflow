@@ -1,16 +1,40 @@
 /**
  * Setup script for OpenSearch indices and dashboard objects
  * Run with: npm run setup-opensearch
+ * 
+ * Requires environment variables:
+ * - OPENSEARCH_URL
+ * - OPENSEARCH_USERNAME
+ * - OPENSEARCH_PASSWORD
+ * - OPENSEARCH_DASHBOARDS_URL
  */
 
 import { Client } from '@opensearch-project/opensearch'
 
-const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200'
-const DASHBOARDS_URL = process.env.OPENSEARCH_DASHBOARDS_URL || 'http://localhost:5601'
+const OPENSEARCH_URL = process.env.OPENSEARCH_URL
+const OPENSEARCH_USERNAME = process.env.OPENSEARCH_USERNAME
+const OPENSEARCH_PASSWORD = process.env.OPENSEARCH_PASSWORD
+const DASHBOARDS_URL = process.env.NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL
+
+if (!OPENSEARCH_URL) {
+  console.error('ERROR: OPENSEARCH_URL environment variable is required')
+  process.exit(1)
+}
+
+if (!OPENSEARCH_USERNAME || !OPENSEARCH_PASSWORD) {
+  console.error('ERROR: OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD environment variables are required')
+  process.exit(1)
+}
 
 const client = new Client({
   node: OPENSEARCH_URL,
-  ssl: { rejectUnauthorized: false },
+  auth: {
+    username: OPENSEARCH_USERNAME,
+    password: OPENSEARCH_PASSWORD,
+  },
+  ssl: {
+    rejectUnauthorized: true,
+  },
 })
 
 // RAG Analytics Index Schema
@@ -726,7 +750,8 @@ async function main() {
     console.log(`✓ Connected to OpenSearch ${info.body.version.number}\n`)
   } catch (error) {
     console.error('✗ Failed to connect to OpenSearch')
-    console.error('Make sure OpenSearch is running: docker-compose up -d')
+    console.error('Check your OPENSEARCH_URL and credentials in .env.local')
+    console.error('Error:', error)
     process.exit(1)
   }
   

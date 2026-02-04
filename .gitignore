@@ -66,3 +66,12 @@ tmp/
 temp/
 *.tmp
 
+# PDF build artifacts (local only)
+docs/.md-to-pdf.json
+docs/pdf-style.css
+docs/RAG-One-Pager-Architecture.pdf
+
+# Langflow runtime files
+langflow.pid
+langflow.log
+nohup.out

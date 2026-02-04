@@ -11,6 +11,15 @@ import hashlib
 from pathlib import Path
 from typing import Optional
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+
+# Load .env from project root (parent directory of scripts/)
+env_path = Path(__file__).parent.parent / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+    print(f"[INFO] Loaded environment from {env_path}")
+
 import httpx
 from opensearchpy import OpenSearch, helpers
 
@@ -27,9 +36,10 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSION = 1536
 
-# OpenSearch
-OPENSEARCH_HOST = os.getenv("OPENSEARCH_HOST", "localhost")
-OPENSEARCH_PORT = int(os.getenv("OPENSEARCH_PORT", 9200))
+# watsonx.data Managed OpenSearch
+OPENSEARCH_URL = os.getenv("OPENSEARCH_URL")  # Required: e.g., https://your-instance.com:9200
+OPENSEARCH_USERNAME = os.getenv("OPENSEARCH_USERNAME")  # Required
+OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD")  # Required
 INDEX_NAME = os.getenv("INDEX_NAME", "hybrid_demo")
 
 # ===========================================
@@ -106,7 +116,7 @@ INDEX_SCHEMA = {
                 "method": {
                     "name": "hnsw",
                     "space_type": "cosinesimil",
-                    "engine": "faiss",
+                    "engine": "lucene",
                     "parameters": {
                         "ef_construction": 256,
                         "m": 32
@@ -180,12 +190,19 @@ SEARCH_PIPELINE = {
 
 
 def create_opensearch_client() -> OpenSearch:
-    """Create OpenSearch client."""
+    """Create OpenSearch client for watsonx.data managed instance."""
+    if not OPENSEARCH_URL:
+        raise ValueError("OPENSEARCH_URL environment variable is required")
+    if not OPENSEARCH_USERNAME or not OPENSEARCH_PASSWORD:
+        raise ValueError("OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD environment variables are required")
+    
     return OpenSearch(
-        hosts=[{"host": OPENSEARCH_HOST, "port": OPENSEARCH_PORT}],
+        hosts=[OPENSEARCH_URL],
+        http_auth=(OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD),
         http_compress=True,
-        use_ssl=False,
-        verify_certs=False,
+        use_ssl=True,
+        verify_certs=True,
+        ssl_show_warn=False,
     )
 
 
@@ -541,7 +558,7 @@ def main():
     
     args = parser.parse_args()
     
-    # Validate API keys
+    # Validate API keys and OpenSearch credentials
     if UNSTRUCTURED_API_KEY == "YOUR_UNSTRUCTURED_API_KEY":
         print("[ERROR] Please set UNSTRUCTURED_API_KEY environment variable")
         print("   export UNSTRUCTURED_API_KEY='your-key-here'")
@@ -552,12 +569,24 @@ def main():
         print("   export OPENAI_API_KEY='your-key-here'")
         return
     
+    if not OPENSEARCH_URL:
+        print("[ERROR] Please set OPENSEARCH_URL environment variable")
+        print("   export OPENSEARCH_URL='https://your-watsonx-data-opensearch.com:9200'")
+        return
+    
+    if not OPENSEARCH_USERNAME or not OPENSEARCH_PASSWORD:
+        print("[ERROR] Please set OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD environment variables")
+        print("   export OPENSEARCH_USERNAME='your-username'")
+        print("   export OPENSEARCH_PASSWORD='your-password'")
+        return
+    
     INDEX_NAME = args.index
     USE_LLM_KEYWORDS = args.llm_keywords
     
     print("="*50)
     print("OpenSearch Hybrid Search Ingestion")
     print("="*50)
+    print(f"OpenSearch URL: {OPENSEARCH_URL}")
     print(f"Index: {INDEX_NAME}")
     print(f"Unstructured API: {UNSTRUCTURED_API_URL}")
     print(f"Embedding Model: {EMBEDDING_MODEL}")

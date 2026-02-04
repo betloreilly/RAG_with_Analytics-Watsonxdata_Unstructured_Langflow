@@ -1,9 +1,10 @@
 # ===========================================
-# Environment Variables
+# RAG Pipeline Environment Variables
 # ===========================================
+# Single .env file for both Python scripts and Next.js frontend
 # Copy this file to .env and fill in your values
 
-# OpenAI API Key (required for embeddings)
+# OpenAI API Key (required for embeddings and LLM analysis)
 OPENAI_API_KEY=your-openai-api-key-here
 
 # Unstructured.io API Key (required for document parsing)
@@ -14,7 +15,17 @@ WATSONX_API_KEY=your-watsonx-api-key-here
 WATSONX_PROJECT_ID=your-project-id-here
 WATSONX_URL=https://us-south.ml.cloud.ibm.com
 
-# OpenSearch Configuration (defaults shown)
-OPENSEARCH_HOST=localhost
-OPENSEARCH_PORT=9200
+# watsonx.data Managed OpenSearch Configuration
+# Get these from your watsonx.data OpenSearch instance
+OPENSEARCH_URL=https://your-opensearch-instance.com:9200
+OPENSEARCH_USERNAME=your-opensearch-username
+OPENSEARCH_PASSWORD=your-opensearch-password
 INDEX_NAME=hybrid_demo
+
+# OpenSearch Dashboards URL (NEXT_PUBLIC_ prefix makes it available to browser)
+NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL=https://your-dashboards-instance.com:5601
+
+# Langflow Configuration (automatically set by setup.sh)
+LANGFLOW_URL=http://localhost:7861
+LANGFLOW_FLOW_ID=
+LANGFLOW_API_KEY=

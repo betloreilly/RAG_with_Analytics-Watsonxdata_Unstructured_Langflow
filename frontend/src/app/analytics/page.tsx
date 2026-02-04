@@ -26,6 +26,12 @@ import {
   LogOut
 } from 'lucide-react'
 
+// Normalize dashboards base URL (no trailing slash) for building links
+function getDashboardsBaseUrl(): string {
+  const url = process.env.NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL || ''
+  return url.replace(/\/+$/, '')
+}
+
 interface NeedsImprovementEntry {
   id: string
   question: string
@@ -127,12 +133,18 @@ export default function AnalyticsPage() {
 
   const getQualityPercentage = () => {
     if (!stats || stats.total_queries === 0) return 0
-    return Math.round((stats.quality_distribution.good / stats.total_queries) * 100)
+    // quality_distribution is an array of buckets: [{key: 'good', doc_count: 10}, ...]
+    const goodBucket = stats.quality_distribution.find((bucket: any) => bucket.key === 'good')
+    const goodCount = goodBucket ? goodBucket.doc_count : 0
+    return Math.round((goodCount / stats.total_queries) * 100)
   }
 
   const getImprovementRate = () => {
     if (!stats || stats.total_queries === 0) return 0
-    return Math.round((stats.quality_distribution.poor / stats.total_queries) * 100)
+    // quality_distribution is an array of buckets: [{key: 'poor', doc_count: 5}, ...]
+    const poorBucket = stats.quality_distribution.find((bucket: any) => bucket.key === 'poor')
+    const poorCount = poorBucket ? poorBucket.doc_count : 0
+    return Math.round((poorCount / stats.total_queries) * 100)
   }
 
   // Show loading while checking auth
@@ -184,15 +196,22 @@ export default function AnalyticsPage() {
               <span>Refresh</span>
             </button>
             
-            <a
-              href="http://localhost:5601/goto/ae609fc1332e4912988652588405074b"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-accent/20 text-teal-accent hover:bg-teal-accent/30 transition-all"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>OpenSearch Dashboards</span>
-            </a>
+            {getDashboardsBaseUrl() ? (
+              <a
+                href={`${getDashboardsBaseUrl()}/goto/ae609fc1332e4912988652588405074b`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-accent/20 text-teal-accent hover:bg-teal-accent/30 transition-all"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>OpenSearch Dashboards</span>
+              </a>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-500/20 text-gray-400 cursor-not-allowed">
+                <ExternalLink className="w-4 h-4" />
+                <span>Dashboards (URL not configured)</span>
+              </div>
+            )}
 
             <button
               onClick={handleLogout}
@@ -284,12 +303,14 @@ export default function AnalyticsPage() {
                       <span className="text-green-400 flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" /> Good
                       </span>
-                      <span className="text-gray-400">{stats?.quality_distribution.good || 0}</span>
+                      <span className="text-gray-400">
+                        {stats?.quality_distribution.find((b: any) => b.key === 'good')?.doc_count || 0}
+                      </span>
                     </div>
                     <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-green-400 rounded-full"
-                        style={{ width: `${stats ? (stats.quality_distribution.good / Math.max(stats.total_queries, 1)) * 100 : 0}%` }}
+                        style={{ width: `${stats ? ((stats.quality_distribution.find((b: any) => b.key === 'good')?.doc_count || 0) / Math.max(stats.total_queries, 1)) * 100 : 0}%` }}
                       />
                     </div>
                   </div>
@@ -298,12 +319,14 @@ export default function AnalyticsPage() {
                       <span className="text-yellow-400 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" /> Fair
                       </span>
-                      <span className="text-gray-400">{stats?.quality_distribution.fair || 0}</span>
+                      <span className="text-gray-400">
+                        {stats?.quality_distribution.find((b: any) => b.key === 'fair')?.doc_count || 0}
+                      </span>
                     </div>
                     <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-yellow-400 rounded-full"
-                        style={{ width: `${stats ? (stats.quality_distribution.fair / Math.max(stats.total_queries, 1)) * 100 : 0}%` }}
+                        style={{ width: `${stats ? ((stats.quality_distribution.find((b: any) => b.key === 'fair')?.doc_count || 0) / Math.max(stats.total_queries, 1)) * 100 : 0}%` }}
                       />
                     </div>
                   </div>
@@ -312,12 +335,14 @@ export default function AnalyticsPage() {
                       <span className="text-red-400 flex items-center gap-1">
                         <XCircle className="w-3 h-3" /> Poor
                       </span>
-                      <span className="text-gray-400">{stats?.quality_distribution.poor || 0}</span>
+                      <span className="text-gray-400">
+                        {stats?.quality_distribution.find((b: any) => b.key === 'poor')?.doc_count || 0}
+                      </span>
                     </div>
                     <div className="h-3 bg-white/10 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-red-400 rounded-full"
-                        style={{ width: `${stats ? (stats.quality_distribution.poor / Math.max(stats.total_queries, 1)) * 100 : 0}%` }}
+                        style={{ width: `${stats ? ((stats.quality_distribution.find((b: any) => b.key === 'poor')?.doc_count || 0) / Math.max(stats.total_queries, 1)) * 100 : 0}%` }}
                       />
                     </div>
                   </div>
@@ -526,20 +551,42 @@ export default function AnalyticsPage() {
               )}
             </div>
 
-            {/* Embedded OpenSearch Dashboard */}
+            {/* OpenSearch Dashboards link (embed often fails for watsonx.data / VPN) */}
             <div className="glass rounded-xl p-5">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-teal-accent" />
-                OpenSearch Analytics Dashboard
+                OpenSearch Dashboards
               </h2>
-              <div className="rounded-lg overflow-hidden bg-white">
-                <iframe 
-                  src="http://localhost:5601/app/dashboards#/view/d4ef20a0-d742-11f0-8c94-2f00b6262e2d?embed=true&_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-15h,to:now))&_a=(description:'',filters:!(),fullScreenMode:!f,options:(hidePanelTitles:!f,useMargins:!t),query:(language:kuery,query:''),timeRestore:!f,title:'RAG%20Analytics%20Dashboard',viewMode:view)&show-time-filter=true" 
-                  height="500"
-                  width="100%"
-                  className="border-0"
-                  title="RAG Analytics Dashboard"
-                />
+              <div className="rounded-lg overflow-hidden bg-white p-5">
+                {getDashboardsBaseUrl() ? (
+                  <>
+                    <p className="text-gray-600 text-sm mb-4">
+                      Open your watsonx.data OpenSearch Dashboards in a new tab to view RAG analytics, quality trends, and saved dashboards.
+                    </p>
+                    <a
+                      href={getDashboardsBaseUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open OpenSearch Dashboards
+                    </a>
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                      <p className="font-medium mb-1">If the link doesn’t open or times out:</p>
+                      <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+                        <li>Confirm you’re on the correct network (e.g. VPN if your watsonx.data instance requires it).</li>
+                        <li>Check that <code className="bg-amber-100 px-1 rounded">NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL</code> in <code className="bg-amber-100 px-1 rounded">.env</code> matches your watsonx.data Dashboards URL (port 5601).</li>
+                        <li>Try opening the URL directly in your browser: <span className="break-all font-mono text-xs">{getDashboardsBaseUrl()}</span></li>
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center text-gray-600 py-8">
+                    <p className="mb-2 font-semibold">OpenSearch Dashboards URL not configured</p>
+                    <p className="text-sm">Set NEXT_PUBLIC_OPENSEARCH_DASHBOARDS_URL in .env file</p>
+                  </div>
+                )}
               </div>
             </div>
           </>

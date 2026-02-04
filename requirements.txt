@@ -7,3 +7,6 @@ tqdm>=4.66.0
 
 # OpenSearch client
 opensearch-py>=2.4.0
+
+# Environment variable management
+python-dotenv>=1.0.0
